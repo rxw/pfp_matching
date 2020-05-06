@@ -1,4 +1,5 @@
 import face_recognition as fr
+from face_encs import *
 import os
 from PIL import Image
 
@@ -14,31 +15,30 @@ def get_distances(faces_folder, face_path):
 
     face_enc = face_enc[0]
     
-    faces_filenames = os.listdir(faces_folder)
-    valid_images = []
-    valid_img_encs = []
+    filenames = os.listdir(faces_folder)
+    if DBNAME not in filenames:
+        make_encodings(faces_folder)
 
-    for ffn in faces_filenames:
-        full_path = os.path.join(faces_folder, ffn)
-        face_obj = fr.load_image_file(full_path)
-        face_encs = fr.face_encodings(face_obj)
+    valid_pairs = read_encodings(faces_folder)
+    valid_imgs  = []
+    valid_encs  = []
 
-        if len(face_encs) == 1:
-            valid_images.append((full_path, face_obj))
-            valid_img_encs.append(face_encs[0])
-    
+    for key, val in valid_pairs.items():
+        valid_imgs.append(key)
+        valid_encs.append(val)
+
     # Find the distances and retrieve the closest one
-    face_distances = fr.face_distance(valid_img_encs, face_enc)
+    face_distances = fr.face_distance(valid_encs, face_enc)
     final_dists = []
 
     for i in range(len(face_distances)):
-        final_dists.append((valid_images[i][0], valid_images[i][1], face_distances[i]))
+        final_dists.append((valid_imgs[i], face_distances[i]))
     
     return final_dists
 
 def get_closest_match(faces_folder, face_path):
     dist_tups = get_distances(faces_folder, face_path)
-    return min(dist_tups, key = lambda t: t[2])
+    return min(dist_tups, key = lambda t: t[1])
 
 def distance_func(distances):
     s = sum([distance ** 2 for distance in distances])
@@ -54,7 +54,7 @@ def get_closest_to_multiple(faces_folder, faces_path):
     distarr_length = len(distances[0])
     possible_indices = [i for i in range(distarr_length)]
     min_index = min(possible_indices, \
-            key = lambda n: distance_func([dist[n][2] for dist in distances]))
+            key = lambda n: distance_func([dist[n][1] for dist in distances]))
 
     return distances[0][min_index]
 
