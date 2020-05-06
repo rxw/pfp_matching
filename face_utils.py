@@ -2,7 +2,7 @@ import face_recognition as fr
 import os
 from PIL import Image
 
-def get_closest_match(faces_folder, face_path):
+def get_distances(faces_folder, face_path):
     face_image = fr.load_image_file(face_path)
     face_enc = fr.face_encodings(face_image)
     
@@ -29,9 +29,32 @@ def get_closest_match(faces_folder, face_path):
     
     # Find the distances and retrieve the closest one
     face_distances = fr.face_distance(valid_img_encs, face_enc)
-    min_dist = min(face_distances)
-    face_distances = face_distances.tolist()
-    min_dist_index = face_distances.index(min_dist)
+    final_dists = []
 
-    face_match = valid_images[min_dist_index]
-    return face_match
+    for i in range(len(face_distances)):
+        final_dists.append((valid_images[i][0], valid_images[i][1], face_distances[i]))
+    
+    return final_dists
+
+def get_closest_match(faces_folder, face_path):
+    dist_tups = get_distances(faces_folder, face_path)
+    return min(dist_tups, key = lambda t: t[2])
+
+def distance_func(distances):
+    s = sum([distance ** 2 for distance in distances])
+    return s
+
+def get_closest_to_multiple(faces_folder, faces_path):
+    distances = []
+    for face_name in os.listdir(faces_path):
+        face_path = os.path.join(faces_path, face_name)
+        dists = get_distances(faces_folder, face_path)
+        distances.append(dists)
+    
+    distarr_length = len(distances[0])
+    possible_indices = [i for i in range(distarr_length)]
+    min_index = min(possible_indices, \
+            key = lambda n: distance_func([dist[n][2] for dist in distances]))
+
+    return distances[0][min_index]
+
